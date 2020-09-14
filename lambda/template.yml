@@ -1,0 +1,23 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  MyBookStoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket: bookstore-lambda
+        key: lambda.zip
+      Events:
+        S3ObjectCreateEvent:
+          Type: S3
+          Properties:
+            Bucket: !ImportValue MyImageBucket
+            Events: s3:ObjectCreated:*
+      FunctionName: lambda-bookstore-dev
+      Handler: index.handler
+      Role: arn:aws:iam::850674839063:role/lambda-bookstore
+      Runtime: nodejs12.x
+  MyThumbnailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled

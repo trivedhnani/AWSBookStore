@@ -1,0 +1,162 @@
+Parameters:
+  DBName:
+    Description: RDS database name
+    Type: String
+    MinLength: 1
+  DBSGDescription:
+    Description: RDS database description
+    Type: String
+  EC2SGDescription:
+    Description: EC2 Security Group description
+    Type: String
+  ALBSGDescription:
+    Description: ALB Security Group description
+    Type: String
+  DBUserName:
+    Description: RDS username
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    Type: String
+  DBPassword:
+    Description: RSD Password
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    Type: String
+    MinLength: 8
+    MaxLength: 41
+  CPUPolicyTargetValue:
+    Type: String
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyALB
+      SecurityGroups:
+        - !GetAtt ALBSecurityGroup.GroupId
+      Subnets:
+        - subnet-d6ee2eb0
+        - subnet-081f8f45
+        - subnet-62844a43
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      Port: 80
+      Protocol: HTTP
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /api/v1/health/
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: 5000
+      Name: ALBTargetGroup
+      Port: 5000
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: vpc-80d0ccfa
+  MyAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: BookStoreASG
+      AvailabilityZones:
+        - us-east-1a
+        - us-east-1b
+        - us-east-1c
+      DesiredCapacity: 2
+      MaxSize: 3
+      MinSize: 1
+      # HealthCheckType: ELB
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: 1
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      # ServiceLinkedRoleARN: arn:aws:iam::aws:policy/aws-service-role/AutoScalingServiceRolePolicy 
+  ScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref MyAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration: 
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref CPUPolicyTargetValue
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+          FromPort: 5000
+          IpProtocol: tcp
+          ToPort: 5000
+      GroupDescription: !Ref EC2SGDescription
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+      GroupDescription: !Ref ALBSGDescription  
+  DBSecuirtyGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      GroupDescription: !Ref DBSGDescription
+      DBSecurityGroupIngress:
+        - CIDRIP: 0.0.0.0/0
+        #EC2SecurityGroupName: !Ref EC2SecurityGroup
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name: EC2RDS
+        ImageId: ami-a4c7edb2
+        InstanceType: t2.micro
+        KeyName: ec2 keypair 1
+        SecurityGroups:
+        - !Ref EC2SecurityGroup
+        UserData:
+          Fn::Base64:
+            #!/bin/bash
+            yum update-y
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+            . ~/.nvm/nvm.sh
+            nvm install node
+            node -e "console.log('Running Node.js ' + process.version)"
+        TagSpecifications:
+         - ResourceType: instance
+           Tags:
+            - Key: env
+              Value: prod
+      LaunchTemplateName: BookStoreLaunchTemplate
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      DBName: !Ref DBName
+      DBSecurityGroups:
+        - !Ref DBSecuirtyGroup
+      Engine: MySQL
+      EngineVersion: 5.7.22
+      MasterUsername: !Ref DBUserName
+      MasterUserPassword: !Ref DBPassword
+      Port: 3306
+  # MyS3Bucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     VersioningConfiguration:
+  #       Status: Enabled

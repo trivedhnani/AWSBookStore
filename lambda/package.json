@@ -1,0 +1,14 @@
+{
+  "name": "lambda",
+  "version": "1.0.0",
+  "description": "Lambda Function to resize the images uploaded to s3",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Trivedh Audurthi",
+  "license": "ISC",
+  "dependencies": {
+    "sharp": "^0.25.4"
+  }
+}

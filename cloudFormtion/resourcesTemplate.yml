@@ -1,0 +1,87 @@
+Parameters:
+  DBName:
+    Description: RDS database name
+    Type: String
+    MinLength: 1
+  DBSGDescription:
+    Description: RDS database description
+    Type: String
+  EC2SGDescription:
+    Description: EC2 Security Group description
+    Type: String
+  DBUserName:
+    Description: RDS username
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    Type: String
+  DBPassword:
+    Description: RSD Password
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    Type: String
+    MinLength: 8
+    MaxLength: 41
+Resources:
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 5000
+          IpProtocol: tcp
+          ToPort: 5000
+      GroupDescription: !Ref EC2SGDescription
+  DBSecuirtyGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      GroupDescription: !Ref DBSGDescription
+      DBSecurityGroupIngress:
+        - CIDRIP: 0.0.0.0/0
+        #EC2SecurityGroupName: !Ref EC2SecurityGroup
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-east-1a
+      InstanceType: t2.micro
+      KeyName: ec2 keypair 1
+      ImageId: ami-a4c7edb2
+      IamInstanceProfile: EC2RDS
+      SecurityGroups:
+        - !Ref EC2SecurityGroup
+      UserData:
+        Fn::Base64:
+          #!/bin/bash
+          yum update-y
+          yum install -y httpd.x86_64
+          systemctl start httpd.service
+          systemctl enable httpd.service
+          echo "Hello World from $(hostname -f)">/var/www/html/index.html
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      DBName: !Ref DBName
+      DBSecurityGroups:
+        - !Ref DBSecuirtyGroup
+      Engine: MySQL
+      EngineVersion: 5.7.22
+      MasterUsername: !Ref DBUserName
+      MasterUserPassword: !Ref DBPassword
+      Port: 3306
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+Outputs:
+  SecurityGroup:
+    Value: !Ref EC2SecurityGroup
+    Export:
+      Name: EC2SecurityGroup

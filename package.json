@@ -1,0 +1,32 @@
+{
+  "name": "bookstore",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --watch ./*.js",
+    "client": "cd client && npm start",
+    "server": "nodemon server.js",
+    "build": "cd client && npm run build",
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\"",
+    "start": "node server.js",
+    "installClient": "cd client && npm install"
+  },
+  "author": "Trivedh Audurthi",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.700.0",
+    "concurrently": "^5.2.0",
+    "dotenv": "^8.2.0",
+    "express.js": "^1.0.0",
+    "multer": "^1.4.2",
+    "mysql": "^2.18.1",
+    "nodemon": "^2.0.4",
+    "uuid": "^8.1.0"
+  },
+  "devDependencies": {
+    "jest": "^24.9.0",
+    "node-mocks-http": "^1.8.1",
+    "supertest": "^4.0.2"
+  }
+}
